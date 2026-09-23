@@ -12,8 +12,8 @@ import (
 	"tinygo.org/x/tinyfont/proggy"
 )
 
-const B float64 = 4275.0
-const R0 float64 = 100000.0
+const b float64 = 4275.0
+const r0 float64 = 100000.0
 
 func main() {
 	machine.I2C0.Configure(machine.I2CConfig{
@@ -33,19 +33,19 @@ func main() {
 	sensor := machine.ADC{Pin: machine.ADC1}
 	sensor.Configure(machine.ADCConfig{})
 
-	v := float64(sensor.Get())
-	r := R0 * (65535.0/v - 1.0)
-	temp := 1.0/(math.Log(r/R0)/B+1.0/298.15) - 273.15
-
-	display.ClearDisplay()
-	white := color.RGBA{255, 255, 255, 255}
-
-	str := fmt.Sprintf("Temp: %0.2f\n", temp)
-	tinyfont.WriteLine(display, &proggy.TinySZ8pt7b, 10, 30, str, white)
-
-	display.Display()
-
 	for {
-		time.Sleep(time.Hour)
+		v := float64(sensor.Get())
+		r := r0 * (65535.0/v - 1.0)
+		temp := 1.0/(math.Log(r/r0)/b+1.0/298.15) - 273.15
+
+		display.ClearDisplay()
+		white := color.RGBA{255, 255, 255, 255}
+
+		str := fmt.Sprintf("Temp: %0.2f C\n", temp)
+		tinyfont.WriteLine(display, &proggy.TinySZ8pt7b, 10, 30, str, white)
+
+		display.Display()
+
+		time.Sleep(time.Second * 10)
 	}
 }
