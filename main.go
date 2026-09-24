@@ -1,47 +1,45 @@
 package main
 
 import (
-	"fmt"
-	"image/color"
 	"machine"
-	"math"
+	"runtime"
 	"time"
-
-	"tinygo.org/x/drivers/ssd1306"
-	"tinygo.org/x/tinyfont"
-	"tinygo.org/x/tinyfont/proggy"
 )
 
 func main() {
-	machine.I2C0.Configure(machine.I2CConfig{
-		Frequency: machine.TWI_FREQ_400KHZ,
-		SDA:       machine.GP0,
-		SCL:       machine.GP1,
+	esp := machine.UART0
+	esp.Configure(machine.UARTConfig{
+		BaudRate: 115200,
+		TX:       machine.GP16,
+		RX:       machine.GP17,
 	})
 
-	display := ssd1306.NewI2C(machine.I2C0)
-	display.Configure(ssd1306.Config{
-		Address: 0x3C,
-		Width:   128,
-		Height:  64,
+	host := machine.UART1
+	host.Configure(machine.UARTConfig{
+		BaudRate: 115200,
+		TX:       machine.GP8,
+		RX:       machine.GP9,
 	})
 
-	machine.InitADC()
-	sensor := machine.ADC{Pin: machine.ADC1}
-	sensor.Configure(machine.ADCConfig{})
+	go func() {
+		led := machine.LED
+		led.Configure(machine.PinConfig{Mode: machine.PinOutput})
+		for {
+			led.Set(!led.Get())
+			time.Sleep(time.Second)
+		}
+	}()
 
 	for {
-		v := float32(sensor.Get()) / math.MaxUint16
-		degree := v * 300
+		for esp.Buffered() > 0 {
+			b, _ := esp.ReadByte()
+			host.WriteByte(b)
+		}
+		for host.Buffered() > 0 {
+			b, _ := host.ReadByte()
+			esp.WriteByte(b)
+		}
 
-		display.ClearDisplay()
-		white := color.RGBA{255, 255, 255, 255}
-
-		str := fmt.Sprintf("Deg: %0.2f\n", degree)
-		tinyfont.WriteLine(display, &proggy.TinySZ8pt7b, 10, 30, str, white)
-
-		display.Display()
-
-		time.Sleep(time.Millisecond * 200)
+		runtime.Gosched()
 	}
 }
